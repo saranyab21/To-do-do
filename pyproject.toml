@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msc-thesis"
+version = "0.1.0"
+description = "Query-conditioned, uncertainty-aware multimodal clinical assessment: expert disagreement and calibrated deference"
+readme = "README.md"
+# Pin the exact minor version to whatever the LME cluster / CIP pool provides
+# (to be confirmed with the supervisor). 3.11/3.12 is the safest range for the
+# torch + transformers + audio stack.
+requires-python = ">=3.11"
+
+# Core: enough for the E0 kappa simulation, calibration and statistics.
+# Runs on CPU, no data and no GPU needed.
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pandas>=2.2",
+    "statsmodels>=0.14",     # TOST, Jonckheere-Terpstra helpers, regression
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Model stack: Qwen2.5-Omni-3B zero-shot scoring and LoRA training.
+model = [
+    "torch>=2.6",
+    "transformers>=4.52",    # Qwen2.5-Omni support
+    "accelerate>=1.6",
+    "peft>=0.15",
+    "qwen-omni-utils",
+    "bitsandbytes>=0.45; platform_system == 'Linux'",  # 4-bit on 8 GB GPUs
+]
+# Data handling for the two modalities.
+data = [
+    "librosa>=0.10",
+    "soundfile>=0.12",
+    "pillow>=10.0",
+    "openpyxl>=3.1",         # per-rater Excel sheets (read on the cluster only)
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "pre-commit>=3.7",
+    "nbstripout>=0.7",
+    "jupyterlab>=4.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks"]

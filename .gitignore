@@ -1,32 +1,106 @@
-﻿# Python
+﻿# ----------------------------------------------------------------------------
+# Python
+# ----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
 .venv/
 venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
 # Secrets
 .env
 .env.*
 !.env.example
 
-# Data
-data/raw/
-data/processed/
-data/external/
+# ----------------------------------------------------------------------------
+# Data (see docs/DATA.md). PC-GITA is under NDA and must NEVER enter this repo.
+# Folder structure is kept via .gitkeep; contents are ignored.
+# ----------------------------------------------------------------------------
+data/raw/*
+data/processed/*
+data/external/*
+!data/**/.gitkeep
 
-# Model checkpoints
+# Data-bearing file types anywhere in the repo (patient audio, rater sheets,
+# derived features). Whitelist a specific non-sensitive file with `!path`.
+*.wav
+*.flac
+*.mp3
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.parquet
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.svs
+*.tif
+*.tiff
+
+# Exception: aggregate result tables only (no per-speaker / per-patient rows).
+!results/metrics/*.csv
+!results/tables/*.csv
+
+# ----------------------------------------------------------------------------
+# Models and experiment outputs
+# ----------------------------------------------------------------------------
 *.pt
 *.pth
 *.ckpt
-*.safetensors/
+*.bin
+*.safetensors
+experiments/checkpoints/*
+experiments/logs/*
+!experiments/**/.gitkeep
+wandb/
+mlruns/
+outputs/
+multirun/
 
-# Experiment outputs
-experiments/logs/
-experiments/checkpoints/
+# ----------------------------------------------------------------------------
+# Personal documents (proposal versions contain address / birthdate / matr. no.)
+# Keep only redacted copies in docs/proposal/.
+# ----------------------------------------------------------------------------
+docs/proposal/*private*
+docs/proposal/*.docx
+docs/papers/*.pdf
 
-# System files
-.DS_Store
-Thumbs.db
+# ----------------------------------------------------------------------------
+# LaTeX build artefacts
+# ----------------------------------------------------------------------------
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.nav
+*.snm
+*.vrb
+thesis/**/*.log
+thesis/**/*.pdf
+!thesis/figures/*.pdf
