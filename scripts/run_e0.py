@@ -179,8 +179,7 @@ def main() -> None:
         "python": sys.version.split()[0],
         "numpy": np.__version__,
     }
-    (out / "e0_run_info.json").write_text(json.dumps(info, indent=2) + "
-")
+    (out / "e0_run_info.json").write_text(json.dumps(info, indent=2) + "\n")
     with pd.option_context("display.width", 200, "display.max_columns", 30):
         print(summary.round(3).to_string(index=False))
 
