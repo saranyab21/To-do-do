@@ -1,0 +1,38 @@
+{
+  "config": {
+    "sizes": [
+      448,
+      896,
+      1344
+    ],
+    "crop_to_tissue": true,
+    "jpeg_quality": 95,
+    "include_test": false,
+    "workers": 8
+  },
+  "n_cores": 244,
+  "median_kept_area_after_crop": 0.93,
+  "per_size": [
+    {
+      "size": 448,
+      "n": 244,
+      "tokens_median": 240.0,
+      "tokens_max": 256,
+      "orig_px_per_px": 10.99
+    },
+    {
+      "size": 896,
+      "n": 244,
+      "tokens_median": 992.0,
+      "tokens_max": 1024,
+      "orig_px_per_px": 5.52
+    },
+    {
+      "size": 1344,
+      "n": 244,
+      "tokens_median": 2208.0,
+      "tokens_max": 2304,
+      "orig_px_per_px": 3.68
+    }
+  ]
+}

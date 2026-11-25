@@ -1,0 +1,7 @@
+# Downscaled Gleason2019 cores for the resolution pilot (Qwen2.5-Omni vision input).
+# One token per 28x28 px: 448 -> ~256 tokens, 896 -> ~1024, 1344 -> ~2304 (square cores).
+sizes: [448, 896, 1344]   # long side in px, rounded to multiples of 28
+crop_to_tissue: true      # trim white glass around the core before resizing
+jpeg_quality: 95
+include_test: false       # test cores have no pathologist maps
+workers: 8

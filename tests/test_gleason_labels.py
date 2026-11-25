@@ -75,3 +75,22 @@ def test_slide_folds():
     f = g.slide_folds(pd.Series(["slide002_core001", "slide001_core004", "slide001_core002"]))
     assert f.set_index("core").fold.to_dict() == {
         "slide001_core002": 0, "slide001_core004": 0, "slide002_core001": 1}
+
+
+def test_fit_to_patches_multiples_of_28():
+    w, h = g.fit_to_patches(5120, 4608, 896)
+    assert w == 896 and h % 28 == 0 and abs(h - 806) <= 28
+
+
+def test_tissue_bbox_finds_stained_region():
+    img = np.full((100, 100, 3), 250, np.uint8)
+    img[20:60, 30:80] = (200, 100, 150)  # pink "tissue"
+    x0, y0, x1, y1 = g.tissue_bbox(img, margin=0.0)
+    assert (x0, y0, x1, y1) == (30, 20, 80, 60)
+
+
+def test_tissue_bbox_ignores_isolated_noise_pixels():
+    img = np.full((100, 100, 3), 250, np.uint8)
+    img[20:60, 30:80] = (200, 100, 150)
+    img[2, 97] = (255, 0, 0)  # a single saturated speck near the corner
+    assert g.tissue_bbox(img, margin=0.0) == (30, 20, 80, 60)

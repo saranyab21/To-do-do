@@ -137,6 +137,67 @@ def slide_folds(cores: pd.Series) -> pd.DataFrame:
     )
 
 
+VISION_PATCH = 28  # Qwen2.5-VL/Omni: 14 px patches merged 2x2 -> one token per 28x28 px
+
+
+def tissue_bbox(rgb: np.ndarray, sat_thresh: float = 0.07, margin: float = 0.02,
+                min_line_frac: float = 0.02):
+    """Bounding box (x0, y0, x1, y1) of stained tissue. A pixel is tissue if its HSV
+    saturation exceeds sat_thresh (glass is near-white); a row/column is kept only if at
+    least min_line_frac of its pixels are tissue, so isolated noisy pixels (JPEG
+    artefacts, dust) near the border do not stretch the box."""
+    arr = rgb.astype(np.float32) / 255.0
+    mx, mn = arr.max(2), arr.min(2)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    mask = sat > sat_thresh
+    xs = np.nonzero(mask.mean(0) >= min_line_frac)[0]
+    ys = np.nonzero(mask.mean(1) >= min_line_frac)[0]
+    h, w = sat.shape
+    if xs.size == 0 or ys.size == 0:
+        return 0, 0, w, h
+    mx_, my_ = int(margin * w), int(margin * h)
+    return (max(xs.min() - mx_, 0), max(ys.min() - my_, 0),
+            min(xs.max() + mx_ + 1, w), min(ys.max() + my_ + 1, h))
+
+
+def fit_to_patches(w: int, h: int, long_side: int) -> tuple[int, int]:
+    """Scale (w, h) so the long side is long_side, both sides multiples of VISION_PATCH."""
+    s = long_side / max(w, h)
+    return (max(VISION_PATCH, round(w * s / VISION_PATCH) * VISION_PATCH),
+            max(VISION_PATCH, round(h * s / VISION_PATCH) * VISION_PATCH))
+
+
+def downscale_core(job: tuple) -> list[dict]:
+    """Decode one core once and write it at every requested size. job = (core, src, out_root,
+    sizes, crop, quality). Returns one manifest row per size."""
+    from PIL import Image
+
+    core, src, out_root, sizes, crop, quality = job
+    Image.MAX_IMAGE_PIXELS = None
+    with Image.open(src) as im:
+        full_w, full_h = im.size
+        im.draft("RGB", (2 * max(sizes), 2 * max(sizes)))  # fast DCT-domain downscale
+        im = im.convert("RGB")
+        scale = full_w / im.size[0]
+        box = tissue_bbox(np.asarray(im)) if crop else (0, 0, *im.size)
+        region = im.crop(box)
+    rows = []
+    for size in sizes:
+        w, h = fit_to_patches(*region.size, size)
+        out = Path(out_root) / f"images_{size}" / f"{core}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        region.resize((w, h), Image.LANCZOS).save(out, quality=quality)
+        rows.append({
+            "core": core, "size": size, "path": str(out), "width": w, "height": h,
+            "vision_tokens": (w // VISION_PATCH) * (h // VISION_PATCH),
+            "orig_w": full_w, "orig_h": full_h,
+            "crop_x0": round(box[0] * scale), "crop_y0": round(box[1] * scale),
+            "crop_x1": round(box[2] * scale), "crop_y1": round(box[3] * scale),
+            "um_per_px_rel": round(((box[2] - box[0]) * scale) / w, 3),  # original px per output px
+        })
+    return rows
+
+
 def default_root() -> Path:
     return Path(os.environ.get("GLEASON2019_ROOT") or
                 Path(__file__).resolve().parents[2] / "data" / "raw" / "gleason2019")
