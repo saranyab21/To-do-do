@@ -73,3 +73,7 @@ def test_evaluate_perfect_model_beats_baselines():
     assert m.n == 140 and m.mass_mean == pytest.approx(0.9)
     assert m.top_match == 1.0 and m.kl < 0.05
     assert m.nll < m.nll_loso_prior < m.nll_uniform
+
+    one_slide = evaluate(pd.DataFrame(rows).assign(fold=0), [0, 3, 4, 5]).iloc[0]
+    assert np.isnan(one_slide.nll_loso_T) and np.isnan(one_slide.nll_loso_prior)
+    assert one_slide.nll == pytest.approx(m.nll)

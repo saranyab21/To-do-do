@@ -56,8 +56,9 @@ def evaluate(df: pd.DataFrame, codes) -> pd.DataFrame:
         h = entropy(p)
         folds = g.fold.to_numpy()
 
-        nll_T, nll_prior, temps = np.empty(len(g)), np.empty(len(g)), []
-        for f in np.unique(folds):
+        nll_T, nll_prior, temps = np.full(len(g), np.nan), np.full(len(g), np.nan), [np.nan]
+        # LOSO needs at least two slides (a --limit smoke test may cover only one)
+        for f in np.unique(folds) if len(np.unique(folds)) > 1 else []:
             te, tr = folds == f, folds != f
             T = fit_temperature(logq[tr], p[tr])
             temps.append(T)
