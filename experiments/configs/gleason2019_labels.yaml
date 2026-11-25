@@ -1,0 +1,4 @@
+# Gleason2019 per-pathologist core labels (Pillar 1 targets). See src/data/gleason2019.py.
+min_pattern_frac: 0.01     # a Gleason pattern counts if it covers >= 1% of the tissue (YAAGGS-style)
+whole_core_6: benign       # rating whose tissue is only label 6: benign (main) | missing (sensitivity)
+workers: 8                 # processes for decoding the label maps

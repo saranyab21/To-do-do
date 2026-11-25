@@ -1,0 +1,65 @@
+{
+  "config": {
+    "min_pattern_frac": 0.01,
+    "whole_core_6": "benign",
+    "workers": 8
+  },
+  "git_commit": "52a183f8bf40ccf3fc5ef150ba85ba546fb6d714",
+  "n_cores": 244,
+  "n_ratings": 1171,
+  "raters_per_core": {
+    "3": 5,
+    "4": 79,
+    "5": 120,
+    "6": 40
+  },
+  "status_counts": {
+    "graded": 1063,
+    "benign": 72,
+    "no_tissue": 20,
+    "only_label6": 16
+  },
+  "rating_counts_by_code": {
+    "primary": {
+      "0": 88,
+      "3": 408,
+      "4": 607,
+      "5": 48
+    },
+    "secondary": {
+      "0": 88,
+      "3": 434,
+      "4": 567,
+      "5": 62
+    }
+  },
+  "cores_per_fold": {
+    "slide001": 44,
+    "slide002": 40,
+    "slide003": 37,
+    "slide005": 46,
+    "slide006": 49,
+    "slide007": 28
+  },
+  "map_image_shape_mismatches": 0,
+  "sensitivity_whole_core_6": {
+    "alternative_rule": "missing",
+    "ratings_changed": 16
+  },
+  "agreement": {
+    "primary": {
+      "krippendorff_alpha_ordinal_ranks": 0.6661179501860852,
+      "krippendorff_alpha_nominal": 0.5402005539597843,
+      "share_cores_all_raters_agree": 0.48360655737704916
+    },
+    "secondary": {
+      "krippendorff_alpha_ordinal_ranks": 0.5326213279979799,
+      "krippendorff_alpha_nominal": 0.36433033595230757,
+      "share_cores_all_raters_agree": 0.3114754098360656
+    }
+  },
+  "entropy_mean": {
+    "primary": 0.229,
+    "secondary": 0.3236
+  }
+}

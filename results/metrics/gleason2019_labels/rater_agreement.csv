@@ -1,0 +1,13 @@
+dimension,rater,n_cores_rated,agreement_with_others_mode,mean_quadratic_kappa_vs_others
+primary,1,241,0.7212,0.6097
+primary,2,139,0.6769,0.6543
+primary,3,232,0.8186,0.6579
+primary,4,238,0.8832,0.6760
+primary,5,237,0.8710,0.7099
+primary,6,64,0.7869,0.6214
+secondary,1,241,0.6398,0.5082
+secondary,2,139,0.6000,0.5211
+secondary,3,232,0.6900,0.5155
+secondary,4,238,0.7216,0.4975
+secondary,5,237,0.6995,0.5262
+secondary,6,64,0.6226,0.4088
