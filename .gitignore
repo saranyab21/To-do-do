@@ -56,8 +56,8 @@ data/external/*
 *.tiff
 
 # Exception: aggregate result tables only (no per-speaker / per-patient rows).
-!results/metrics/*.csv
-!results/tables/*.csv
+!results/metrics/**/*.csv
+!results/tables/**/*.csv
 
 # ----------------------------------------------------------------------------
 # Models and experiment outputs

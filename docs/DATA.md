@@ -19,9 +19,9 @@ this repository. Read it before adding any loader, notebook or result file.
 5. `.gitignore` blocks common data file types (`*.wav`, `*.xlsx`, `*.csv`,
    `*.npy`, ...) everywhere. Whitelist a specific non-sensitive file
    explicitly (`!path/to/file.csv`) rather than weakening the rule. The one
-   standing exception is `results/metrics/*.csv` and `results/tables/*.csv`,
-   which may hold **aggregate** results only, never per-speaker or
-   per-patient rows.
+   standing exception is CSV files under `results/metrics/` and `results/tables/`
+   (including subfolders), which may hold **aggregate** or **simulated** results
+   only, never per-speaker or per-patient rows from real data.
 
 ## Datasets
 

@@ -1,0 +1,43 @@
+# E0 v2: as e0.yaml (v1) but with the Bayes-shaped mixture reference model and the
+# reflected (basic) bootstrap interval. v1 results: results/metrics/e0_v1/.
+# E0: simulation check of the direction-gated deference estimator.
+# Pass criteria (proposal): >= 90 % interval coverage of the planted kappa,
+# <= 5 % wrong decisions.
+seed: 20261124
+reps: 200
+n_boot: 2000
+tau_cos: 0.5          # direction gate; placeholder until preregistered
+alpha: 0.05
+population_cases: 4000  # cases used to fit the population-limit reference
+reference: mixture      # linear (v1, log-linear terms) | mixture (v2, Bayes-shaped mixture)
+reference_penalty: firth  # mixture only: firth | prior | none
+bootstrap_interval: basic  # percentile | basic (both are computed; this one decides)
+
+designs:
+  pcgita:             # 40 PD speakers usable for kappa, 8 mFDA items (0-4), 4 raters
+    K: 5
+    n_cases: 40
+    n_dims: 8
+    rater_reliabilities: [0.55, 0.60, 0.85, 0.90]   # 2 students, 2 experts
+    raters_per_case: [4, 4]
+    pairs_per_item: 3
+  gleason:            # ~215 confirmatory TMA cores, primary + secondary pattern, 3-6 pathologists
+    K: 4
+    n_cases: 215
+    n_dims: 2
+    rater_reliabilities: [0.60, 0.65, 0.70, 0.80, 0.85, 0.90]
+    raters_per_case: [3, 6]
+    pairs_per_item: 3
+
+# Scenarios are run for every design.
+#   plant: reference -> Delta = kappa * r_pop + noise   (estimator validity)
+#   plant: bayes     -> Delta = r_bayes + noise          (reference adequacy)
+#   misspec: ordinal rater errors + coarse stated reliability (expert 0.9 / other 0.5)
+scenarios:
+  - {name: kappa_0.5, kappa: 0.5}
+  - {name: kappa_1,   kappa: 1.0}
+  - {name: kappa_2,   kappa: 2.0}
+  - {name: reversed,  kappa: -1.0}
+  - {name: misspec_kappa_1, kappa: 1.0, misspec: true}
+  - {name: bayes_kappa_1,   kappa: 1.0, plant: bayes}
+noise_frac: 0.5       # per-entry noise SD in Delta, relative to RMS of r_pop

@@ -1,0 +1,81 @@
+{
+  "config": {
+    "seed": 20261124,
+    "reps": 200,
+    "n_boot": 2000,
+    "tau_cos": 0.5,
+    "alpha": 0.05,
+    "population_cases": 4000,
+    "designs": {
+      "pcgita": {
+        "K": 5,
+        "n_cases": 40,
+        "n_dims": 8,
+        "rater_reliabilities": [
+          0.55,
+          0.6,
+          0.85,
+          0.9
+        ],
+        "raters_per_case": [
+          4,
+          4
+        ],
+        "pairs_per_item": 3
+      },
+      "gleason": {
+        "K": 4,
+        "n_cases": 215,
+        "n_dims": 2,
+        "rater_reliabilities": [
+          0.6,
+          0.65,
+          0.7,
+          0.8,
+          0.85,
+          0.9
+        ],
+        "raters_per_case": [
+          3,
+          6
+        ],
+        "pairs_per_item": 3
+      }
+    },
+    "scenarios": [
+      {
+        "name": "kappa_0.5",
+        "kappa": 0.5
+      },
+      {
+        "name": "kappa_1",
+        "kappa": 1.0
+      },
+      {
+        "name": "kappa_2",
+        "kappa": 2.0
+      },
+      {
+        "name": "reversed",
+        "kappa": -1.0
+      },
+      {
+        "name": "misspec_kappa_1",
+        "kappa": 1.0,
+        "misspec": true
+      },
+      {
+        "name": "bayes_kappa_1",
+        "kappa": 1.0,
+        "plant": "bayes"
+      }
+    ],
+    "noise_frac": 0.5
+  },
+  "config_path": "experiments\\configs\\e0.yaml",
+  "reps": 200,
+  "git_commit": "35f9d921d511b6a4264b37db8a8706bf29031a4d",
+  "runtime_s": 986.0,
+  "python": "3.14.6",
+  "numpy": "2.5.5"
+}
