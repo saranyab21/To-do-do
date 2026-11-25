@@ -1,0 +1,26 @@
+# Zero-shot Qwen2.5-Omni-3B on Gleason2019 cores: base distribution q0(y | x, q_d) for
+# Pillar 1 and the resolution pilot. One forward pass per (core, size, dimension).
+run_name: zeroshot_v1          # outputs: data/processed/gleason2019/zeroshot/<run_name>/
+model_id: Qwen/Qwen2.5-Omni-3B
+revision: null                 # null = latest; the resolved commit is logged in run_info.json
+quant: 4bit                    # 4bit | 8bit | fp16  (fp16 needs > 8 GB VRAM)
+sizes: [448, 896, 1344]        # image long side, from images_manifest.csv
+dimensions: [primary, secondary]
+codes: [0, 3, 4, 5]            # benign, Gleason pattern 3, 4, 5; each one token
+
+# Wording follows the label rule in src/data/gleason2019.py. Changing any prompt text
+# needs a new run_name (the runner refuses to resume a run with different prompts).
+prompts:
+  system: >-
+    You are an expert genitourinary pathologist grading prostate cancer.
+  context: >-
+    This image shows one hematoxylin and eosin (H&E) stained prostate tissue microarray core.
+  questions:
+    primary: >-
+      What is the primary Gleason pattern, i.e. the pattern covering the largest area of
+      cancer in this core? Answer with a single digit: 0 if there is no cancer (benign),
+      otherwise 3, 4 or 5.
+    secondary: >-
+      What is the secondary Gleason pattern, i.e. the pattern covering the second largest
+      area of cancer in this core? If only one pattern is present, repeat it. Answer with a
+      single digit: 0 if there is no cancer (benign), otherwise 3, 4 or 5.
