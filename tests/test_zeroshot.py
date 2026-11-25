@@ -4,9 +4,11 @@ import pytest
 from scipy.special import log_softmax
 
 from src.evaluation.soft_label import (
+    apply_tb,
     entropy,
     evaluate,
     fit_temperature,
+    fit_temperature_bias,
     soft_nll,
     temper,
     top_match,
@@ -54,6 +56,17 @@ def test_temperature_recovers_overconfidence():
     assert np.allclose(temper(true * 3.0, T), true, atol=0.05)
 
 
+def test_temperature_bias_removes_constant_preference():
+    rng = np.random.default_rng(2)
+    true = log_softmax(rng.normal(size=(3000, 4)) * 1.5, axis=1)
+    p = np.exp(true)
+    biased = true / 0.5 + np.array([0.0, 4.0, 0.0, -1.0])  # overconfident and loves code 1
+    th = fit_temperature_bias(biased, p, ridge=0.0)
+    assert np.allclose(apply_tb(biased, th), true, atol=0.05)
+    assert soft_nll(apply_tb(biased, th), p).mean() < soft_nll(
+        temper(biased, fit_temperature(biased, p)), p).mean()
+
+
 def test_top_match_counts_ties():
     p = np.array([[0.5, 0.5, 0, 0], [0, 0, 1, 0]])
     logq = np.log(np.array([[0.1, 0.7, 0.1, 0.1], [0.7, 0.1, 0.1, 0.1]]))
@@ -73,6 +86,8 @@ def test_evaluate_perfect_model_beats_baselines():
     assert m.n == 140 and m.mass_mean == pytest.approx(0.9)
     assert m.top_match == 1.0 and m.kl < 0.05
     assert m.nll < m.nll_loso_prior < m.nll_uniform
+    assert np.isfinite(m.T_median) and m.nll_loso_TB < m.nll_loso_prior
+    assert m.auroc_cancer > 0.9 and m.spearman_grade > 0.9
 
     one_slide = evaluate(pd.DataFrame(rows).assign(fold=0), [0, 3, 4, 5]).iloc[0]
     assert np.isnan(one_slide.nll_loso_T) and np.isnan(one_slide.nll_loso_prior)

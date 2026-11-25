@@ -6,16 +6,24 @@ Per case i with rater shares p_i over the K codes and model log-probabilities lo
     KL_i       = soft NLL_i - H(p_i)           (0 iff q_i reproduces the raters' spread)
 
 Baselines: uniform over codes, and the leave-one-slide-out (LOSO) marginal of the rater
-shares. "loso_T" rescales the model's log-probabilities by one temperature fitted on the
-other slides, which separates ranking quality from over/under-confidence.
+shares. Two LOSO recalibrations of the model, fitted on the other slides:
+  * loso_T     one temperature: separates ranking quality from over/under-confidence
+  * loso_TB    temperature plus one bias per code: also removes a constant answer
+               preference (e.g. always "3"). It can always fall back to the prior (T large),
+               so nll_loso_TB clearly below nll_loso_prior means the image carries signal.
+Signal diagnostics that ignore calibration entirely:
+  * auroc_cancer   P(cancer) = 1 - q(0) against the raters' majority (cancer vs benign)
+  * spearman_grade expected code rank under q against the raters' mean code rank
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize, minimize_scalar
 from scipy.special import log_softmax
+from scipy.stats import spearmanr
+from sklearn.metrics import roc_auc_score
 
 
 def soft_nll(logq: np.ndarray, p: np.ndarray) -> np.ndarray:
@@ -38,10 +46,37 @@ def fit_temperature(logq: np.ndarray, p: np.ndarray) -> float:
     return float(np.exp(res.x))
 
 
+def apply_tb(logq: np.ndarray, theta: np.ndarray) -> np.ndarray:
+    """theta = [log T, b_1, ..., b_{K-1}] (b_0 = 0)."""
+    return log_softmax(logq / np.exp(theta[0]) + np.r_[0.0, theta[1:]], axis=1)
+
+
+def fit_temperature_bias(logq: np.ndarray, p: np.ndarray, ridge: float = 1e-3) -> np.ndarray:
+    """Temperature plus per-code bias minimising mean soft NLL (tiny ridge for stability)."""
+    k = logq.shape[1]
+    res = minimize(lambda th: soft_nll(apply_tb(logq, th), p).mean() + ridge * th @ th,
+                   np.zeros(k), method="L-BFGS-B", bounds=[(-4.0, 6.0)] + [(-20.0, 20.0)] * (k - 1))
+    return res.x
+
+
 def top_match(logq: np.ndarray, p: np.ndarray) -> np.ndarray:
     """1 if the model's top code is a (possibly tied) most common rater answer."""
     pred = logq.argmax(1)
     return (p[np.arange(len(p)), pred] >= p.max(1) - 1e-12).astype(float)
+
+
+def auroc_cancer(logq: np.ndarray, p: np.ndarray) -> float:
+    """Code 0 = benign. Label: majority of raters say cancer. NaN if one class is absent."""
+    y = (p[:, 0] < 0.5).astype(int)
+    if y.min() == y.max():
+        return np.nan
+    return float(roc_auc_score(y, 1 - np.exp(logq[:, 0])))
+
+
+def spearman_grade(logq: np.ndarray, p: np.ndarray) -> float:
+    ranks = np.arange(logq.shape[1])
+    rho = spearmanr(np.exp(logq) @ ranks, p @ ranks).statistic
+    return float(rho)
 
 
 def evaluate(df: pd.DataFrame, codes) -> pd.DataFrame:
@@ -56,13 +91,15 @@ def evaluate(df: pd.DataFrame, codes) -> pd.DataFrame:
         h = entropy(p)
         folds = g.fold.to_numpy()
 
-        nll_T, nll_prior, temps = np.full(len(g), np.nan), np.full(len(g), np.nan), [np.nan]
+        nll_T, nll_TB, nll_prior = (np.full(len(g), np.nan) for _ in range(3))
+        temps = []
         # LOSO needs at least two slides (a --limit smoke test may cover only one)
         for f in np.unique(folds) if len(np.unique(folds)) > 1 else []:
             te, tr = folds == f, folds != f
             T = fit_temperature(logq[tr], p[tr])
             temps.append(T)
             nll_T[te] = soft_nll(temper(logq[te], T), p[te])
+            nll_TB[te] = soft_nll(apply_tb(logq[te], fit_temperature_bias(logq[tr], p[tr])), p[te])
             prior = np.clip(p[tr].mean(0), 1e-6, None)
             nll_prior[te] = soft_nll(np.log(prior / prior.sum())[None, :], p[te])
 
@@ -75,10 +112,13 @@ def evaluate(df: pd.DataFrame, codes) -> pd.DataFrame:
             "top_match": float(top_match(logq, p).mean()),
             "nll": float(nll.mean()), "kl": float((nll - h).mean()),
             "nll_loso_T": float(nll_T.mean()), "kl_loso_T": float((nll_T - h).mean()),
-            "T_median": float(np.median(temps)),
+            "T_median": float(np.median(temps)) if temps else np.nan,
+            "nll_loso_TB": float(nll_TB.mean()),
             "nll_uniform": float(np.log(len(codes))),
             "nll_loso_prior": float(nll_prior.mean()),
             "rater_entropy": float(h.mean()),
+            "auroc_cancer": auroc_cancer(logq, p),
+            "spearman_grade": spearman_grade(logq, p),
             **{f"pred_share_{c}": float((pred == k).mean()) for k, c in enumerate(codes)},
         })
     return pd.DataFrame(rows)
