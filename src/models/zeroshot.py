@@ -73,8 +73,8 @@ def load_thinker(model_id: str, quant: str = "4bit", revision: str | None = None
     return model, processor
 
 
-def score_codes(model, processor, messages: list[dict], image, code_ids: dict[str, int]) -> dict:
-    """Full-vocabulary log-prob of each code at the first answer position."""
+def prepare_inputs(model, processor, messages: list[dict], image):
+    """Tokenised chat + pixel values on the model's device (pixels in fp16)."""
     import torch
 
     text = processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
@@ -82,6 +82,14 @@ def score_codes(model, processor, messages: list[dict], image, code_ids: dict[st
     inputs = inputs.to(model.device)
     if "pixel_values" in inputs:
         inputs["pixel_values"] = inputs["pixel_values"].to(torch.float16)
+    return inputs
+
+
+def score_codes(model, processor, messages: list[dict], image, code_ids: dict[str, int]) -> dict:
+    """Full-vocabulary log-prob of each code at the first answer position."""
+    import torch
+
+    inputs = prepare_inputs(model, processor, messages, image)
     with torch.inference_mode():
         logits = model(**inputs, use_cache=False).logits[0, -1].float()
     logp = torch.log_softmax(logits, dim=-1)

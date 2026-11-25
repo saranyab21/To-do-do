@@ -1,0 +1,12 @@
+# Linear probe on frozen features (Gleason2019): does the frozen model "see" Gleason
+# patterns even though its zero-shot answer does not use them?
+run_name: probe_v1             # features: data/processed/gleason2019/features/<run_name>/
+model_config: experiments/configs/gleason2019_zeroshot.yaml   # model, quant, prompts
+prompt_dimension: primary      # question used for the last-token features
+layers: [0, 9, 18, 27, 36]     # 0 = vision-tower output; Qwen2.5-Omni-3B has 36 LM layers
+sizes: [448, 896, 1344]
+
+# probe (CPU): standardise -> PCA -> soft-label logistic regression, nested LOSO for C
+pca_components: 64
+C_grid: [0.001, 0.01, 0.1, 1.0, 10.0]
+workers: 8

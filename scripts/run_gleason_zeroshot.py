@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-import subprocess
 import sys
 import time
 from datetime import UTC, datetime
@@ -27,16 +26,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.evaluation.soft_label import evaluate
+from src.utils.provenance import git_state
 
 PROC = ROOT / "data/processed/gleason2019"
 MET = ROOT / "results/metrics/gleason2019_zeroshot"
-
-
-def git_state() -> dict:
-    def run(*a):
-        return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True,
-                              check=False).stdout.strip()
-    return {"commit": run("rev-parse", "HEAD"), "dirty": bool(run("status", "--porcelain"))}
 
 
 def load_scores(path: Path) -> pd.DataFrame:
