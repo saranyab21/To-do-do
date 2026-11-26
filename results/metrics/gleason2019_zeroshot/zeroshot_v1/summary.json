@@ -1,0 +1,11 @@
+{
+  "run_name": "zeroshot_v1",
+  "n_scores": 1464,
+  "n_cores": 244,
+  "n_nonfinite": 0,
+  "top_tokens": {
+    "3": 1463,
+    "0": 1
+  },
+  "seconds_per_pass_median": 0.66
+}
