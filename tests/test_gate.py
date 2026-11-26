@@ -65,3 +65,33 @@ def test_shuffle_partners_cross_slide():
     cores = [f"slide00{s}_core00{i}" for s in (1, 2, 3) for i in range(4)]
     part = shuffle_partners(cores, seed=1)
     assert all(c.split("_")[0] != p.split("_")[0] for c, p in part.items())
+
+
+def test_hard_negative_partner_is_similar_cross_slide_and_differs():
+    from scripts.run_gleason_gate import hard_negative_partners
+    cores = ["slide001_core001", "slide001_core002", "slide002_core001", "slide002_core002"]
+    X = np.array([[1.0, 0.0], [0.0, 1.0], [0.95, 0.05], [0.05, 0.95]])
+    modes = {"slide001_core001": {1}, "slide001_core002": {2},
+             "slide002_core001": {2}, "slide002_core002": {1}}
+    part = hard_negative_partners(cores, X, modes)
+    # core001 of slide001 looks like slide002_core001, which has a different majority answer
+    assert part["slide001_core001"] == "slide002_core001"
+    assert part["slide001_core002"] == "slide002_core002"
+    modes_same = {c: {1} for c in cores}
+    assert set(hard_negative_partners(cores, X, modes_same).values()) == {None}
+
+
+def test_wordings_and_frozen_config():
+    from scripts.run_gleason_gate import frozen_part, question, variants
+    cfg = {"size": 448, "blank_rgb": [1, 1, 1], "seed": 1,
+           "dimensions": {"a": {"codes": [0, 1], "question": "Q", "paraphrases": ["P1", "P2"]},
+                          "b": {"codes": [0, 1], "question": "R"}}}
+    assert variants(cfg, "real") == ["q0", "p1", "p2"]
+    assert variants(cfg, "shuffled") == ["q0"]
+    assert question(cfg["dimensions"]["a"], "p2") == "P2"
+    assert question(cfg["dimensions"]["b"], "p1") is None
+    old = frozen_part(cfg)
+    cfg["dimensions"]["a"]["paraphrases"].append("P3")    # an addition keeps the run valid
+    assert frozen_part(cfg) == old
+    cfg["dimensions"]["a"]["question"] = "Q changed"      # a change does not
+    assert frozen_part(cfg) != old

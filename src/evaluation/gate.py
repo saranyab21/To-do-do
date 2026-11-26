@@ -11,11 +11,17 @@ manipulation and a pre-stated pass rule (95% intervals, slide-stratified bootstr
   G3 query swap    same image, other question. For each pair of dimensions (t, u) with
                    one code set: [NLL(t,t) + NLL(u,u)] - [NLL(t,u) + NLL(u,t)], where
                    NLL(a,b) scores the answer to question a against the answers for b.
-                   Pass: interval < -margin for every pair involving t. (Amended after
-                   gate_v1: the first rule compared questions within one target only, so a
-                   question whose answer was generically better passed; the swap cancels it.)
-  G4 grounding     same question, another core's image ("shuffled", from another slide) or
-                   a blank image. NLL(shuffled) - NLL(real). Pass: interval > margin.
+                   Pass: interval < -margin in every question wording, for every pair
+                   involving t, AND changing the question moves the answer more than
+                   rewording it (JS divergence, paired interval > 0; paraphrase control,
+                   Yang et al. 2026). (Amended after gate_v1, before any fine-tuned model:
+                   the first rule compared questions within one target only, so a question
+                   whose answer was generically better passed; the swap cancels it.)
+  G4 grounding     same question, another core's image: a random core from another slide
+                   ("shuffled") and the most similar-looking core from another slide whose
+                   pathologists' majority grade group differs ("hard negative"; added after
+                   gate_v1). NLL(swapped) - NLL(real) > margin for both. A blank image is
+                   reported as a descriptive control.
 
 margin = min_effect_nats in the config (0.01 nats), so a negligible difference cannot pass.
 

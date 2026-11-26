@@ -17,6 +17,6 @@ def stratified_indices(groups: np.ndarray, n_boot: int, rng) -> np.ndarray:
 def ci(values: np.ndarray, idx: np.ndarray, level: float = 0.95) -> tuple[float, float, float]:
     """Mean of per-case values and its percentile interval over bootstrap rows idx."""
     values = np.asarray(values, float)
-    bs = values[idx].mean(1)
+    bs = np.nanmean(values[idx], axis=1)  # NaN = case not scored (e.g. no hard negative)
     a = (1 - level) / 2
-    return float(values.mean()), float(np.quantile(bs, a)), float(np.quantile(bs, 1 - a))
+    return float(np.nanmean(values)), float(np.quantile(bs, a)), float(np.quantile(bs, 1 - a))
