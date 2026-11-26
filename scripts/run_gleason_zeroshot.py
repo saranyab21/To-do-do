@@ -19,6 +19,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -66,9 +67,19 @@ def main() -> None:
     ap.add_argument("--config", default=str(ROOT / "experiments/configs/gleason2019_zeroshot.yaml"))
     ap.add_argument("--sizes", type=int, nargs="+", help="override config sizes")
     ap.add_argument("--limit", type=int, help="score only the first N cores (smoke test)")
+    ap.add_argument("--per-slide", type=int,
+                    help="score a fixed random subset of N cores per slide (seeded)")
+    ap.add_argument("--quant", choices=["4bit", "8bit", "fp16"], help="override config quant")
+    ap.add_argument("--run-name", help="override config run_name (needed with --quant)")
     ap.add_argument("--eval-only", action="store_true")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
+    if args.quant:
+        if not args.run_name:
+            sys.exit("--quant changes the model; give the run a new --run-name")
+        cfg["quant"] = args.quant
+    if args.run_name:
+        cfg["run_name"] = args.run_name
     out = PROC / "zeroshot" / cfg["run_name"]
     if args.eval_only:
         run_eval(cfg, out)
@@ -100,6 +111,12 @@ def main() -> None:
     man = pd.read_csv(PROC / "images_manifest.csv")
     rated = set(pd.read_csv(PROC / "rater_distributions.csv").query("n_raters > 0").core)
     cores = sorted(rated & set(man.core))[: args.limit]
+    if args.per_slide:  # same subset every time: seeded draw within each slide
+        rng = np.random.default_rng(0)
+        by_slide = pd.Series(cores).groupby(pd.Series(cores).str.split("_").str[0])
+        cores = sorted(c for _, g in by_slide
+                       for c in rng.choice(g.to_numpy(), min(args.per_slide, len(g)),
+                                           replace=False))
     sizes = args.sizes or cfg["sizes"]
     done = load_scores(out / "scores.jsonl")
     done_keys = set(zip(done.core, done["size"], done.dimension)) if len(done) else set()

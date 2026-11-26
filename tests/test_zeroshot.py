@@ -92,3 +92,21 @@ def test_evaluate_perfect_model_beats_baselines():
     one_slide = evaluate(pd.DataFrame(rows).assign(fold=0), [0, 3, 4, 5]).iloc[0]
     assert np.isnan(one_slide.nll_loso_T) and np.isnan(one_slide.nll_loso_prior)
     assert one_slide.nll == pytest.approx(m.nll)
+
+
+def test_quantisation_compare_identical_and_shifted():
+    from scripts.compare_quantisation import compare
+    rng = np.random.default_rng(0)
+    cores = [f"slide00{s}_core{i:03d}" for s in (1, 2) for i in range(20)]
+    lp = rng.normal(size=(len(cores), 4))
+    base = pd.DataFrame({"core": cores, "size": 448, "dimension": "primary",
+                         **{f"lp_{c}": lp[:, k] for k, c in enumerate((0, 3, 4, 5))}})
+    dist = pd.DataFrame({"core": cores, "dimension": "primary", "n_raters": 4,
+                         "n_0": 1, "n_3": 1, "n_4": 1, "n_5": 1})
+    slides = pd.Series([c.split("_")[0] for c in cores], index=cores)
+    same = compare(base, base.copy(), [0, 3, 4, 5], dist, slides, n_boot=50).iloc[0]
+    assert same.top_answer_agreement == 1.0 and same.js_bits == pytest.approx(0.0, abs=1e-12)
+    moved = base.copy()
+    moved["lp_5"] += 5.0  # a different model that strongly prefers "5"
+    diff = compare(base, moved, [0, 3, 4, 5], dist, slides, n_boot=50).iloc[0]
+    assert diff.top_answer_agreement < 0.5 and diff.js_bits > 0.2
