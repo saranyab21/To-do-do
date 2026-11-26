@@ -79,46 +79,56 @@ def spearman_grade(logq: np.ndarray, p: np.ndarray) -> float:
     return float(rho)
 
 
+def per_case(g: pd.DataFrame, codes) -> tuple[pd.DataFrame, list, np.ndarray, np.ndarray]:
+    """Per-case losses for one (size, dimension) group: raw soft NLL, after LOSO
+    temperature (nll_T) and temperature+bias (nll_TB), the LOSO prior's NLL, the rater
+    entropy and top_match. Also returns the fitted temperatures, log q and p."""
+    codes = [str(c) for c in codes]
+    lp = g[[f"lp_{c}" for c in codes]].to_numpy(float)
+    logq = log_softmax(lp, axis=1)  # renormalise over the answer codes
+    p = g[[f"n_{c}" for c in codes]].to_numpy(float) / g.n_raters.to_numpy(float)[:, None]
+    folds = g.fold.to_numpy()
+
+    nll_T, nll_TB, nll_prior = (np.full(len(g), np.nan) for _ in range(3))
+    temps = []
+    # LOSO needs at least two slides (a --limit smoke test may cover only one)
+    for f in np.unique(folds) if len(np.unique(folds)) > 1 else []:
+        te, tr = folds == f, folds != f
+        T = fit_temperature(logq[tr], p[tr])
+        temps.append(T)
+        nll_T[te] = soft_nll(temper(logq[te], T), p[te])
+        nll_TB[te] = soft_nll(apply_tb(logq[te], fit_temperature_bias(logq[tr], p[tr])), p[te])
+        prior = np.clip(p[tr].mean(0), 1e-6, None)
+        nll_prior[te] = soft_nll(np.log(prior / prior.sum())[None, :], p[te])
+
+    cases = pd.DataFrame({
+        "core": g.core.to_numpy(), "fold": folds, "nll": soft_nll(logq, p), "nll_T": nll_T,
+        "nll_TB": nll_TB, "nll_prior": nll_prior, "entropy": entropy(p),
+        "top_match": top_match(logq, p), "mass": np.exp(lp).sum(1)})
+    return cases, temps, logq, p
+
+
 def evaluate(df: pd.DataFrame, codes) -> pd.DataFrame:
     """df: one row per (core, size, dimension) with lp_<c> (full-vocabulary log-probs),
     n_<c> (rater counts), n_raters, fold. Returns one metrics row per (size, dimension)."""
     codes = [str(c) for c in codes]
     rows = []
     for (size, dim), g in df[df.n_raters > 0].groupby(["size", "dimension"]):
-        lp = g[[f"lp_{c}" for c in codes]].to_numpy(float)
-        logq = log_softmax(lp, axis=1)  # renormalise over the answer codes
-        p = g[[f"n_{c}" for c in codes]].to_numpy(float) / g.n_raters.to_numpy(float)[:, None]
-        h = entropy(p)
-        folds = g.fold.to_numpy()
-
-        nll_T, nll_TB, nll_prior = (np.full(len(g), np.nan) for _ in range(3))
-        temps = []
-        # LOSO needs at least two slides (a --limit smoke test may cover only one)
-        for f in np.unique(folds) if len(np.unique(folds)) > 1 else []:
-            te, tr = folds == f, folds != f
-            T = fit_temperature(logq[tr], p[tr])
-            temps.append(T)
-            nll_T[te] = soft_nll(temper(logq[te], T), p[te])
-            nll_TB[te] = soft_nll(apply_tb(logq[te], fit_temperature_bias(logq[tr], p[tr])), p[te])
-            prior = np.clip(p[tr].mean(0), 1e-6, None)
-            nll_prior[te] = soft_nll(np.log(prior / prior.sum())[None, :], p[te])
-
-        nll = soft_nll(logq, p)
+        c, temps, logq, p = per_case(g, codes)
         pred = logq.argmax(1)
         rows.append({
             "size": size, "dimension": dim, "n": len(g),
-            "mass_mean": float(np.exp(lp).sum(1).mean()),
-            "mass_min": float(np.exp(lp).sum(1).min()),
-            "top_match": float(top_match(logq, p).mean()),
-            "nll": float(nll.mean()), "kl": float((nll - h).mean()),
-            "nll_loso_T": float(nll_T.mean()), "kl_loso_T": float((nll_T - h).mean()),
+            "mass_mean": float(c.mass.mean()), "mass_min": float(c.mass.min()),
+            "top_match": float(c.top_match.mean()),
+            "nll": float(c.nll.mean()), "kl": float((c.nll - c.entropy).mean()),
+            "nll_loso_T": float(c.nll_T.mean()), "kl_loso_T": float((c.nll_T - c.entropy).mean()),
             "T_median": float(np.median(temps)) if temps else np.nan,
-            "nll_loso_TB": float(nll_TB.mean()),
+            "nll_loso_TB": float(c.nll_TB.mean()),
             "nll_uniform": float(np.log(len(codes))),
-            "nll_loso_prior": float(nll_prior.mean()),
-            "rater_entropy": float(h.mean()),
+            "nll_loso_prior": float(c.nll_prior.mean()),
+            "rater_entropy": float(c.entropy.mean()),
             "auroc_cancer": auroc_cancer(logq, p),
             "spearman_grade": spearman_grade(logq, p),
-            **{f"pred_share_{c}": float((pred == k).mean()) for k, c in enumerate(codes)},
+            **{f"pred_share_{c_}": float((pred == k).mean()) for k, c_ in enumerate(codes)},
         })
     return pd.DataFrame(rows)
