@@ -1,0 +1,4 @@
+pair,diff,lo,hi,pass,pathologists_as_predictor
+primary / secondary,-0.0009,-0.011,0.0089,False,-0.5236
+primary / highest,0.0024,0.0014,0.0036,False,-0.3273
+secondary / highest,-0.0385,-0.0457,-0.032,True,-0.3874

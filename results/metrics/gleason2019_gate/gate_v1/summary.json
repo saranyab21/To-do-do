@@ -19,7 +19,7 @@
     "secondary": {
       "G1_pass": false,
       "G2_pass": false,
-      "G3_pass": true,
+      "G3_pass": false,
       "G4_pass": false
     },
     "highest": {
