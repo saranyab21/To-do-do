@@ -123,25 +123,39 @@ def analyse(cfg: dict, dist: pd.DataFrame, out: Path) -> dict:
                                                ci(G.js_divergence(np.exp(logq), np.exp(lq_bl)), idx)))})
         gate_rows.append(row)
 
-    # G3: query swap on dimensions sharing one code set
+    # G3: query swap on dimensions sharing one code set.
+    # nll[a, t] = answer to question a scored against the pathologists' answers for t.
     swap = cfg.get("query_swap", [])
-    swap_rows = []
+    swap_rows, pair_rows, nll, ref = [], [], {}, {}
     for t in swap:
         codes = cfg["dimensions"][t]["codes"]
         p_t = dd[t][[f"n_{c}" for c in codes]].to_numpy(float) / dd[t].n_raters.to_numpy(float)[:, None]
-        nll_by_ask = {}
         for a in swap:
             lq_a, _ = G.logq_and_p(frame(a, "real").join(dd[t][[f"n_{c}" for c in codes] + ["n_raters"]],
                                                          lsuffix="_score"), codes)
-            nll_by_ask[a] = soft_nll(lq_a, p_t)
-            oracle = soft_nll(G.smoothed_log_shares(dd[a], codes), p_t)
-            m, lo, hi = ci(nll_by_ask[a], idx)
+            nll[a, t] = soft_nll(lq_a, p_t)
+            ref[a, t] = soft_nll(G.smoothed_log_shares(dd[a], codes), p_t)
+            m, lo, hi = ci(nll[a, t], idx)
             swap_rows.append({"truth": t, "asked": a, "nll": m, "lo": lo, "hi": hi,
-                              "pathologists_as_predictor": float(oracle.mean())})
-        diffs = [ci(nll_by_ask[t] - nll_by_ask[a], idx) for a in swap if a != t]
+                              "pathologists_as_predictor": float(ref[a, t].mean())})
+    # Amended rule (v2, after gate_v1): matched pairs must beat swapped pairs,
+    #   [nll(t,t) + nll(u,u)] - [nll(t,u) + nll(u,t)] < -margin,
+    # which cancels a question whose answer is generically better for every target.
+    # The original column rule (matching question best in its own column) is kept as
+    # G3_column_pass for comparison; it passed gate_v1's "secondary" for that reason.
+    for i, t in enumerate(swap):
+        for u in swap[i + 1:]:
+            m, lo, hi = ci(nll[t, t] + nll[u, u] - nll[t, u] - nll[u, t], idx)
+            r_m = float((ref[t, t] + ref[u, u] - ref[t, u] - ref[u, t]).mean())
+            pair_rows.append({"pair": f"{t} / {u}", "diff": m, "lo": lo, "hi": hi,
+                              "pass": hi < -eff, "pathologists_as_predictor": r_m})
+    for t in swap:
         g = next(r for r in gate_rows if r["dimension"] == t)
-        g["G3_worst_hi"] = max(x[2] for x in diffs)
-        g["G3_pass"] = all(x[2] < -eff for x in diffs)
+        col = [ci(nll[t, t] - nll[a, t], idx) for a in swap if a != t]
+        g["G3_column_pass"] = all(x[2] < -eff for x in col)
+        mine = [p for p in pair_rows if t in p["pair"].split(" / ")]
+        g["G3_swap_worst_hi"] = max(p["hi"] for p in mine)
+        g["G3_pass"] = all(p["pass"] for p in mine)
 
     met = ROOT / "results/metrics/gleason2019_gate" / cfg["run_name"]
     fig = ROOT / "results/figures/gleason2019_gate" / cfg["run_name"]
@@ -152,6 +166,8 @@ def analyse(cfg: dict, dist: pd.DataFrame, out: Path) -> dict:
     pd.DataFrame(rel_rows).round(4).to_csv(met / "reliability.csv", index=False)
     swap_df = pd.DataFrame(swap_rows)
     swap_df.round(4).to_csv(met / "query_swap.csv", index=False)
+    pairs = pd.DataFrame(pair_rows)
+    pairs.round(4).to_csv(met / "query_swap_pairs.csv", index=False)
     ground = pd.DataFrame(ground_rows)
     ground.round(4).to_csv(met / "grounding.csv", index=False)
     summary = {"run_name": cfg["run_name"], "n_cores": len(cores), "size": cfg["size"],
@@ -165,7 +181,7 @@ def analyse(cfg: dict, dist: pd.DataFrame, out: Path) -> dict:
     plot_reliability(pd.DataFrame(rel_rows), gate, dims, fig / "reliability.png")
     plot_entropy(ent_pts, dims, fig / "entropy_alignment.png")
     if len(swap_df):
-        plot_query_swap(swap_df, swap, fig / "query_swap.png")
+        plot_query_swap(swap_df, swap, pairs, fig / "query_swap.png")
     if len(ground):
         plot_grounding(ground, dims, fig / "grounding.png")
 
@@ -215,15 +231,15 @@ def plot_entropy(pts, dims, path):
         ax.set_xlabel("pathologists' disagreement (entropy)")
         ax.set_xlim(-0.05, 1.05), ax.set_ylim(-0.05, 1.05)
         ax.grid(color=GRID, lw=0.7)
-    np.atleast_1d(axes)[0].set_ylabel("model uncertainty (entropy, after LOSO T)")
+    np.atleast_1d(axes)[0].set_ylabel("model entropy (after LOSO T)")
     fig.suptitle("G2 · Does the model's uncertainty follow pathologist disagreement? "
                  "(dots: cores; line: mean per disagreement level)", x=0.01, ha="left", color=INK)
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
     fig.savefig(path, dpi=200)
     plt.close(fig)
 
 
-def plot_query_swap(sw, dims, path):
+def plot_query_swap(sw, dims, pairs, path):
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.9))
     vmin = min(sw.nll.min(), sw.pathologists_as_predictor.min())
     vmax = max(sw.nll.max(), sw.pathologists_as_predictor.max())
@@ -246,8 +262,13 @@ def plot_query_swap(sw, dims, path):
     axes[0].set_ylabel("question asked")
     axes[1].set_yticks(range(len(dims)), [""] * len(dims))  # rows as in the left panel
     fig.colorbar(im, ax=axes, shrink=0.8, label="soft cross-entropy (lower is better)")
-    fig.suptitle("G3 · Query specificity: the matching question should give the lowest loss in "
-                 "each column", x=0.01, ha="left", color=INK)
+    fig.suptitle("G3 · Query specificity: does the answer depend on which question is asked?",
+                 x=0.01, ha="left", color=INK)
+    lines = ["Swap test, matched minus swapped question pairs (below 0 = question-specific):"]
+    lines += [f"  {p['pair']}:  model {p['diff']:+.3f} [{p['lo']:+.3f}, {p['hi']:+.3f}]   "
+              f"pathologists {p['pathologists_as_predictor']:+.3f}" for _, p in pairs.iterrows()]
+    fig.text(0.01, -0.12, "\n".join(lines), fontsize=9, color=INK_2,
+             family="monospace", va="top")
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -264,6 +285,9 @@ def plot_grounding(gr, dims, path):
         ax.bar(xs, r["mean"], width=w - 0.03, color=colours[wh], label=wh)
         ax.errorbar(xs, r["mean"], yerr=[r["mean"] - r["lo"], r["hi"] - r["mean"]], fmt="none",
                     ecolor=INK_2, lw=1.2, capsize=0)
+        for x, v, hi in zip(xs, r["mean"], r["hi"]):  # label every bar: some are ~0.001
+            ax.text(x, hi + 0.01, f"{v:.3f}" if v < 0.01 else f"{v:.2f}", ha="center",
+                    va="bottom", fontsize=8, color=INK_2)
     ax.set_xticks(range(len(dims)), [DIM_LABEL[d] for d in dims])
     ax.set_ylabel("change in answer distribution\n(Jensen-Shannon, bits)")
     ax.grid(axis="y", color=GRID, lw=0.7)

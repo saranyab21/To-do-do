@@ -8,9 +8,12 @@ manipulation and a pre-stated pass rule (95% intervals, slide-stratified bootstr
                    temperature minus the LOSO label prior's NLL. Pass: interval < -margin.
   G2 entropy       no manipulation. Spearman correlation between the entropy of q and the
                    pathologists' entropy, both normalised by log K. Pass: interval > 0.
-  G3 query swap    same image, other question. For each target dimension t, NLL of the
-                   answer to the matching question minus the best answer to a mismatched
-                   question (same code set). Pass: interval < 0 for every t.
+  G3 query swap    same image, other question. For each pair of dimensions (t, u) with
+                   one code set: [NLL(t,t) + NLL(u,u)] - [NLL(t,u) + NLL(u,t)], where
+                   NLL(a,b) scores the answer to question a against the answers for b.
+                   Pass: interval < -margin for every pair involving t. (Amended after
+                   gate_v1: the first rule compared questions within one target only, so a
+                   question whose answer was generically better passed; the swap cancels it.)
   G4 grounding     same question, another core's image ("shuffled", from another slide) or
                    a blank image. NLL(shuffled) - NLL(real). Pass: interval > margin.
 
