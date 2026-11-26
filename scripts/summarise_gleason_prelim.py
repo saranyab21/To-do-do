@@ -10,7 +10,7 @@ copies from the CIP pool land):
 
 Every method is scored on the same 244 cores, so differences are paired. Intervals: 2,000
 bootstrap resamples of cores, stratified by slide (each slide keeps its number of cores),
-i.e. conditional on these seven slides. Feature sets are fixed in advance, not picked as
+i.e. conditional on these six slides. Feature sets are fixed in advance, not picked as
 the best: the vision-tower output (img_L0) and the last layer at the answer position
 (last_L36).
 

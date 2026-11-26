@@ -1,0 +1,14 @@
+# Linear probe re-run with the vision tower in fp16 (loader fix 51157d6). probe_v1/v2 used
+# features from a vision tower that was unintentionally quantised to 4-bit. Everything
+# else is identical to gleason2019_probe.yaml, so probe_v3 vs probe_v2 isolates the effect
+# of vision-tower precision on what the frozen features contain.
+run_name: probe_fp16vision     # features: data/processed/gleason2019/features/<run_name>/
+model_config: experiments/configs/gleason2019_zeroshot.yaml   # model, quant (4-bit LM), prompts
+prompt_dimension: primary
+layers: [0, 9, 18, 27, 36]
+sizes: [448, 896, 1344]
+
+probe_name: probe_v3
+pca_components: 64
+C_grid: [0.00001, 0.0001, 0.001, 0.01, 0.1]   # same grid as probe_v2
+workers: 8
