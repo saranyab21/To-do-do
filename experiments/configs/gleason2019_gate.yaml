@@ -1,0 +1,36 @@
+# Pillar-1 competence and grounding gate on Gleason2019 (see src/evaluation/gate.py).
+# One forward pass per (core, query dimension, image condition).
+run_name: gate_v1
+model_config: experiments/configs/gleason2019_zeroshot.yaml   # model, quant, system + context
+labels_config: experiments/configs/gleason2019_labels.yaml    # min_pattern_frac
+size: 448                     # image encoder signal does not depend on size (probe_v2)
+conditions: [real, shuffled, blank]
+blank_rgb: [242, 242, 242]    # empty glass
+seed: 20261126                # shuffle partners (always a core from another slide) and bootstrap
+n_boot: 2000
+min_effect_nats: 0.01      # G1, G3, G4 must beat zero by this margin (95% interval)
+
+# Query dimensions, each answered with one digit. primary/secondary reuse the zero-shot
+# wording from model_config, so their "real" scores reproduce zeroshot_v1 at 448 px.
+dimensions:
+  cancer:
+    codes: [0, 1]
+    question: >-
+      Does this core contain prostate cancer (any Gleason pattern 3, 4 or 5)? Answer with a
+      single digit: 1 if cancer is present, 0 if the core is benign.
+  primary:
+    codes: [0, 3, 4, 5]
+  secondary:
+    codes: [0, 3, 4, 5]
+  highest:
+    codes: [0, 3, 4, 5]
+    question: >-
+      What is the highest Gleason pattern present anywhere in this core, even in a small
+      area? Answer with a single digit: 0 if there is no cancer (benign), otherwise 3, 4 or 5.
+  grade_group:
+    codes: [0, 1, 2, 3, 4, 5]
+    question: >-
+      What is the ISUP grade group of this core, from its primary and secondary Gleason
+      patterns (3+3 = 1, 3+4 = 2, 4+3 = 3, 4+4, 3+5 or 5+3 = 4, 4+5, 5+4 or 5+5 = 5)?
+      Answer with a single digit: 0 if there is no cancer (benign), otherwise 1 to 5.
+query_swap: [primary, secondary, highest]   # same code set, so answers are comparable

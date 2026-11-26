@@ -128,6 +128,54 @@ def rater_distributions(labels: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# Query dimensions for the query-conditioned assessor. Each is derived from the same
+# per-pathologist map, so every dimension has its own distribution of pathologist answers.
+DIMENSION_CODES = {
+    "cancer": (0, 1),                  # any counted Gleason pattern
+    "primary": CODES,
+    "secondary": CODES,
+    "highest": CODES,                  # worst counted pattern (>= min_pattern_frac)
+    "grade_group": (0, 1, 2, 3, 4, 5),  # ISUP grade group from primary + secondary
+}
+
+
+def grade_group(primary: int, secondary: int) -> int:
+    """ISUP grade group (Epstein et al., 2016); 0 = benign."""
+    if primary == 0:
+        return 0
+    score = primary + secondary
+    if score <= 6:
+        return 1
+    if score == 7:
+        return 2 if primary == 3 else 3
+    return 4 if score == 8 else 5
+
+
+def rating_dimensions(labels: pd.DataFrame, min_pattern_frac: float = 0.01) -> pd.DataFrame:
+    """Long table (core, slide, rater, dimension, value) for every rated map. Uses the
+    primary/secondary labels and the pattern fractions written by rater_labels()."""
+    lab = labels.dropna(subset=["primary"])
+    rows = []
+    for r in lab.itertuples():
+        p, s = int(r.primary), int(r.secondary)
+        present = [q for q in PATTERNS if getattr(r, f"frac_{q}") >= min_pattern_frac]
+        vals = {"cancer": int(p > 0), "primary": p, "secondary": s,
+                "highest": max(present) if p > 0 else 0, "grade_group": grade_group(p, s)}
+        rows += [{"core": r.core, "slide": r.slide, "rater": r.rater, "dimension": d, "value": v}
+                 for d, v in vals.items()]
+    return pd.DataFrame(rows)
+
+
+def dimension_distributions(long: pd.DataFrame) -> pd.DataFrame:
+    """Per (core, dimension): n_<code> rater counts for codes 0..5 (unused codes stay 0)
+    and n_raters."""
+    counts = (long.groupby(["core", "slide", "dimension"]).value.value_counts()
+              .unstack(fill_value=0).reindex(columns=range(6), fill_value=0))
+    counts.columns = [f"n_{c}" for c in counts.columns]
+    counts["n_raters"] = counts.sum(axis=1)
+    return counts.reset_index()
+
+
 def slide_folds(cores: pd.Series) -> pd.DataFrame:
     """Leave-one-slide-out folds: fold index = position of the slide in sorted order."""
     slides = sorted({slide_of(c) for c in cores})
