@@ -1,0 +1,38 @@
+{
+  "config": {
+    "run_name": "probe_v1",
+    "model_config": "experiments/configs/gleason2019_zeroshot.yaml",
+    "prompt_dimension": "primary",
+    "layers": [
+      0,
+      9,
+      18,
+      27,
+      36
+    ],
+    "sizes": [
+      448,
+      896,
+      1344
+    ],
+    "pca_components": 64,
+    "C_grid": [
+      0.001,
+      0.01,
+      0.1,
+      1.0,
+      10.0
+    ],
+    "workers": 8
+  },
+  "git": {
+    "commit": "efe2b11c3535850175297cba5cec5d2b731d56ff",
+    "dirty": true
+  },
+  "n_probes": 66,
+  "C_chosen_share": {
+    "0.001": 0.711,
+    "0.01": 0.239,
+    "0.1": 0.05
+  }
+}

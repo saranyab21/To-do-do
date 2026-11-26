@@ -6,7 +6,11 @@ prompt_dimension: primary      # question used for the last-token features
 layers: [0, 9, 18, 27, 36]     # 0 = vision-tower output; Qwen2.5-Omni-3B has 36 LM layers
 sizes: [448, 896, 1344]
 
-# probe (CPU): standardise -> PCA -> soft-label logistic regression, nested LOSO for C
+# probe (CPU): outputs under results/metrics/gleason2019_probe/<probe_name>/
+probe_name: probe_v2
+# standardise -> PCA -> soft-label logistic regression, nested LOSO for C
 pca_components: 64
-C_grid: [0.001, 0.01, 0.1, 1.0, 10.0]
+# probe_v1 used [0.001 .. 10] and chose the smallest C 71% of the time (grid edge), so the
+# grid is shifted down; nothing above 0.1 was ever chosen.
+C_grid: [0.00001, 0.0001, 0.001, 0.01, 0.1]
 workers: 8

@@ -4,9 +4,9 @@
 
 Reads data/processed/gleason2019/features/<run_name>/features_<size>.npz (from
 extract_gleason_features.py). Writes out-of-fold predictions (git-ignored) to
-data/processed/gleason2019/features/<run_name>/probe_predictions.csv and aggregate
-metrics (tracked) to results/metrics/gleason2019_probe/<run_name>/metrics.csv and
-summary.json.
+data/processed/gleason2019/features/<run_name>/predictions_<probe_name>.csv and
+aggregate metrics (tracked) to results/metrics/gleason2019_probe/<probe_name>/metrics.csv
+and summary.json. probe_name defaults to run_name.
 """
 
 from __future__ import annotations
@@ -76,7 +76,8 @@ def main() -> None:
     print(f"{len(tasks)} probes (size x feature x dimension), nested LOSO")
     with ProcessPoolExecutor(max_workers=cfg["workers"]) as pool:
         preds = pd.concat(pool.map(run_task, tasks), ignore_index=True)
-    preds.to_csv(fdir / "probe_predictions.csv", index=False)
+    name = cfg.get("probe_name", cfg["run_name"])
+    preds.to_csv(fdir / f"predictions_{name}.csv", index=False)
 
     df = preds.merge(dist, on=["core", "dimension"]).merge(
         folds.reset_index()[["core", "fold"]], on="core")
@@ -86,7 +87,7 @@ def main() -> None:
     metrics = metrics[first + [c for c in metrics.columns if c not in first]]
     metrics = metrics.sort_values(["dimension", "nll"]).reset_index(drop=True)
 
-    met = MET / cfg["run_name"]
+    met = MET / name
     met.mkdir(parents=True, exist_ok=True)
     metrics.round(4).to_csv(met / "metrics.csv", index=False)
     C_counts = preds.groupby("C_chosen").core.size() / preds.groupby("C_chosen").core.size().sum()
