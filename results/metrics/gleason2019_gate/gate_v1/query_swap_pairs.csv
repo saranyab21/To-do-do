@@ -1,4 +1,4 @@
-pair,diff,lo,hi,pass,pathologists_as_predictor
-primary / secondary,-0.0009,-0.011,0.0089,False,-0.5236
-primary / highest,0.0024,0.0014,0.0036,False,-0.3273
-secondary / highest,-0.0385,-0.0457,-0.032,True,-0.3874
+pair,pathologists_swap,pathologists_question_js,swap_p1,swap_p1_lo,swap_p1_hi,swap_p2,swap_p2_lo,swap_p2_hi,swap_q0,swap_q0_lo,swap_q0_hi,swap_pass,question_js,question_js_lo,question_js_hi,paraphrase_js,paraphrase_js_lo,paraphrase_js_hi,question_minus_paraphrase,question_minus_paraphrase_lo,question_minus_paraphrase_hi,paraphrase_pass,pass
+primary / secondary,-0.5236,0.1326,-0.009,-0.0245,0.006,-0.0011,-0.0078,0.0055,-0.0009,-0.011,0.0089,False,0.0154,0.0151,0.0158,0.0325,0.0322,0.0327,-0.0171,-0.0173,-0.0168,False,False
+primary / highest,-0.3273,0.0868,0.0372,0.0277,0.048,-0.0239,-0.0314,-0.0172,0.0024,0.0014,0.0036,False,0.0132,0.0129,0.0136,0.0389,0.0387,0.0391,-0.0257,-0.026,-0.0253,False,False
+secondary / highest,-0.3874,0.1002,-0.0032,-0.0044,-0.0022,-0.0428,-0.0519,-0.0345,-0.0385,-0.0457,-0.032,False,0.0058,0.0057,0.006,0.0255,0.0253,0.0257,-0.0197,-0.0199,-0.0195,False,False

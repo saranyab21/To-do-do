@@ -2,7 +2,7 @@
   "run_name": "gate_v1",
   "n_cores": 244,
   "size": 448,
-  "n_scores": 3660,
+  "n_scores": 7320,
   "n_nonfinite": 0,
   "pass": {
     "cancer": {
