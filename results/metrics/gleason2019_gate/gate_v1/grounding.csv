@@ -1,0 +1,16 @@
+dimension,what,mean,lo,hi
+cancer,model: real vs shuffled image,0.0009,0.0008,0.0011
+cancer,pathologists: core vs shuffle partner,0.1473,0.1088,0.188
+cancer,model: real vs blank image,0.0796,0.0782,0.0811
+primary,model: real vs shuffled image,0.0015,0.0013,0.0017
+primary,pathologists: core vs shuffle partner,0.4298,0.3849,0.4747
+primary,model: real vs blank image,0.0581,0.0567,0.0594
+secondary,model: real vs shuffled image,0.0006,0.0005,0.0007
+secondary,pathologists: core vs shuffle partner,0.3658,0.3246,0.4072
+secondary,model: real vs blank image,0.0483,0.0476,0.0491
+highest,model: real vs shuffled image,0.001,0.0008,0.0011
+highest,pathologists: core vs shuffle partner,0.3961,0.3527,0.4405
+highest,model: real vs blank image,0.0325,0.0317,0.0332
+grade_group,model: real vs shuffled image,0.001,0.0009,0.0011
+grade_group,pathologists: core vs shuffle partner,0.5873,0.546,0.6293
+grade_group,model: real vs blank image,0.062,0.0612,0.0628

@@ -1,0 +1,37 @@
+{
+  "run_name": "gate_v1",
+  "n_cores": 244,
+  "size": 448,
+  "n_scores": 3660,
+  "n_nonfinite": 0,
+  "pass": {
+    "cancer": {
+      "G1_pass": false,
+      "G2_pass": false,
+      "G4_pass": false
+    },
+    "primary": {
+      "G1_pass": false,
+      "G2_pass": false,
+      "G3_pass": false,
+      "G4_pass": false
+    },
+    "secondary": {
+      "G1_pass": false,
+      "G2_pass": false,
+      "G3_pass": true,
+      "G4_pass": false
+    },
+    "highest": {
+      "G1_pass": false,
+      "G2_pass": false,
+      "G3_pass": false,
+      "G4_pass": false
+    },
+    "grade_group": {
+      "G1_pass": false,
+      "G2_pass": false,
+      "G4_pass": false
+    }
+  }
+}
