@@ -7,7 +7,10 @@ both scored. Per (size, dimension): how often the top answer agrees, how far apa
 two answer distributions are (Jensen-Shannon, bits), and the soft NLL of each against the
 pathologists. For scale, the pathologists' answers for two different cores differ by
 0.37-0.43 bits on these questions (gate_v1), and an unchanged model gives 0 bits.
-Writes results/metrics/gleason2019_zeroshot/quantisation_check.csv.
+Writes results/metrics/gleason2019_zeroshot/quantisation_<a>_vs_<b>.csv.
+
+Note: runs made before 2026-11-26 (e.g. zeroshot_v1) had the vision tower quantised as
+well (see FP16_MODULES in src/models/zeroshot.py); later runs keep it in fp16.
 """
 
 from __future__ import annotations
@@ -29,7 +32,7 @@ from src.evaluation.gate import js_divergence
 from src.evaluation.soft_label import soft_nll
 
 PROC = ROOT / "data/processed/gleason2019"
-OUT = ROOT / "results/metrics/gleason2019_zeroshot/quantisation_check.csv"
+OUT_DIR = ROOT / "results/metrics/gleason2019_zeroshot"
 
 
 def load(run: str) -> tuple[pd.DataFrame, dict]:
@@ -77,11 +80,12 @@ def main() -> None:
     res = compare(a, b, cfg_a["codes"], dist, slides)
     res.insert(0, "b", f"{args.b} ({cfg_b['quant']})")
     res.insert(0, "a", f"{args.a} ({cfg_a['quant']})")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    res.round(4).to_csv(OUT, index=False)
+    out = OUT_DIR / f"quantisation_{args.a}_vs_{args.b}.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    res.round(4).to_csv(out, index=False)
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(res.drop(columns=["a", "b"]).round(3).to_string(index=False))
-    print(f"wrote {OUT.relative_to(ROOT)}")
+    print(f"wrote {out.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -110,3 +110,20 @@ def test_quantisation_compare_identical_and_shifted():
     moved["lp_5"] += 5.0  # a different model that strongly prefers "5"
     diff = compare(base, moved, [0, 3, 4, 5], dist, slides, n_boot=50).iloc[0]
     assert diff.top_answer_agreement < 0.5 and diff.js_bits > 0.2
+
+
+def test_quantised_layers_found_by_type_name():
+    from src.models.zeroshot import quantised_layers
+
+    class Linear4bit:  # stands in for bitsandbytes' class (only the name is checked)
+        pass
+
+    class Linear:
+        pass
+
+    class FakeModel:
+        def named_modules(self):
+            return [("model.language_model.layers.0.mlp", Linear4bit()),
+                    ("model.visual.blocks.0.mlp", Linear()), ("lm_head", Linear())]
+
+    assert quantised_layers(FakeModel()) == ["model.language_model.layers.0.mlp"]

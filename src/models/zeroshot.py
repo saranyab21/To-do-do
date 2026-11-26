@@ -44,12 +44,26 @@ def build_messages(prompts: dict, dimension: str, image) -> list[dict]:
     return msgs
 
 
+# Modules kept in fp16 under quantisation. Recent transformers versions match these against
+# full module paths, and the vision tower can sit at "visual", "model.visual" or
+# "thinker.visual", so every form is listed. Runs before 2026-11-26 used only
+# ["visual", "lm_head"], which left the vision tower quantised (found when 8-bit failed on
+# its 3420-wide MLP); load_thinker now verifies the result instead of trusting the list.
+FP16_MODULES = ["visual", "model.visual", "thinker.visual", "lm_head", "model.lm_head"]
+
+
+def quantised_layers(model) -> list[str]:
+    """Names of the bitsandbytes (4-bit or 8-bit) linear layers in the model."""
+    return [n for n, m in model.named_modules()
+            if type(m).__name__ in ("Linear4bit", "Linear8bitLt")]
+
+
 def load_thinker(model_id: str, quant: str = "4bit", revision: str | None = None):
     """Thinker (text-output part) of Qwen2.5-Omni plus its processor.
 
-    quant: '4bit' (NF4, fp16 compute; fits an 8 GB RTX 2080), '8bit', or 'fp16'. The vision
-    tower and lm_head stay in fp16 under quantisation: they are small, and quantising the
-    vision encoder hurts fine image detail. Turing GPUs (RTX 20xx) have no bfloat16.
+    quant: '4bit' (NF4, fp16 compute; fits an 8 GB RTX 2080), '8bit', or 'fp16'. Only the
+    language model (and the unused audio tower) is quantised; the vision tower and lm_head
+    stay in fp16, which is checked after loading. Turing GPUs (RTX 20xx) have no bfloat16.
     """
     import torch
     from transformers import (
@@ -62,13 +76,21 @@ def load_thinker(model_id: str, quant: str = "4bit", revision: str | None = None
     if quant == "4bit":
         kw["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
-            bnb_4bit_compute_dtype=torch.float16, llm_int8_skip_modules=["visual", "lm_head"])
+            bnb_4bit_compute_dtype=torch.float16, llm_int8_skip_modules=FP16_MODULES)
     elif quant == "8bit":
         kw["quantization_config"] = BitsAndBytesConfig(
-            load_in_8bit=True, llm_int8_skip_modules=["visual", "lm_head"])
+            load_in_8bit=True, llm_int8_skip_modules=FP16_MODULES)
     elif quant != "fp16":
         raise ValueError(f"unknown quant {quant!r}")
     model = Qwen2_5OmniThinkerForConditionalGeneration.from_pretrained(model_id, **kw).eval()
+    q = quantised_layers(model)
+    bad = [n for n in q if "visual" in n or "lm_head" in n]
+    if bad:
+        raise RuntimeError(f"{len(bad)} vision/lm_head layers were quantised, e.g. {bad[:3]}; "
+                           "add their path prefix to FP16_MODULES")
+    if quant != "fp16" and not q:
+        raise RuntimeError("nothing was quantised; check the quantisation config")
+    print(f"quantised {len(q)} linear layers ({quant}); vision tower and lm_head in fp16")
     processor = Qwen2_5OmniProcessor.from_pretrained(model_id, revision=revision)
     return model, processor
 
