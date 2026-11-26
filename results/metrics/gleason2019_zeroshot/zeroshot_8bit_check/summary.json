@@ -1,0 +1,12 @@
+{
+  "run_name": "zeroshot_8bit_check",
+  "n_scores": 72,
+  "n_cores": 36,
+  "n_nonfinite": 0,
+  "top_tokens": {
+    "3": 62,
+    "0": 6,
+    "4": 4
+  },
+  "seconds_per_pass_median": 0.24
+}

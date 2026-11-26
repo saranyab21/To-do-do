@@ -1,0 +1,3 @@
+a,b,size,dimension,n_cores,top_answer_agreement,top_answer_a,top_answer_b,js_bits,js_lo,js_hi,nll_a,nll_b,nll_b_minus_a,nll_b_minus_a_lo,nll_b_minus_a_hi
+zeroshot_4bit_v2 (4bit),zeroshot_8bit_check (8bit),448,primary,36,0.8056,3,3,0.002,0.0014,0.0027,1.3271,1.3509,0.0239,-0.0074,0.0515
+zeroshot_4bit_v2 (4bit),zeroshot_8bit_check (8bit),448,secondary,36,0.9167,3,3,0.0052,0.0045,0.0059,1.2948,1.3072,0.0124,-0.0261,0.0523
