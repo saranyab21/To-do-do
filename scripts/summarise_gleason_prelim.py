@@ -5,8 +5,13 @@
 Inputs (git-ignored, per core): zero-shot scores and out-of-fold probe predictions. They
 are looked up where the GPU scripts write them, then in data/processed/gleason2019/ (where
 copies from the CIP pool land):
-    zeroshot/zeroshot_v1/scores.jsonl          or  zeroshot_scores.jsonl
-    features/probe_v1/predictions_probe_v2.csv or  predictions_probe_v2.csv
+    zeroshot/zeroshot_v1/scores.jsonl                  or  zeroshot_scores.jsonl
+    features/probe_fp16vision/predictions_probe_v3.csv or  predictions_probe_v3.csv
+    features/probe_v1/predictions_probe_v2.csv         or  predictions_probe_v2.csv
+
+The headline probe is probe_v3 (vision tower in fp16, as intended). probe_v2 used features
+from a vision tower that was unintentionally quantised to 4-bit; it is kept as a
+sensitivity check (methods suffixed "_v2", and the "v3 - v2" paired differences).
 
 Every method is scored on the same 244 cores, so differences are paired. Intervals: 2,000
 bootstrap resamples of cores, stratified by slide (each slide keeps its number of cores),
@@ -66,11 +71,15 @@ def per_core_losses() -> pd.DataFrame:
     zs = pd.DataFrame([json.loads(x) for x in
                        find("zeroshot/zeroshot_v1/scores.jsonl", "zeroshot_scores.jsonl")
                        .read_text().splitlines() if x])
-    pr = pd.read_csv(find("features/probe_v1/predictions_probe_v2.csv",
+    pr = pd.read_csv(find("features/probe_fp16vision/predictions_probe_v3.csv",
+                          "predictions_probe_v3.csv"))
+    v2 = pd.read_csv(find("features/probe_v1/predictions_probe_v2.csv",
                           "predictions_probe_v2.csv"))
+    v2 = v2[v2.feature.isin(["img_L0", "last_L36"])].assign(feature=lambda d: d.feature + "_v2")
     out = []
     for name, df, keys in (("zeroshot", zs, ["size", "dimension"]),
-                           ("probe", pr, ["feature", "size", "dimension"])):
+                           ("probe", pr, ["feature", "size", "dimension"]),
+                           ("probe", v2, ["feature", "size", "dimension"])):
         df = df.merge(dist, on=["core", "dimension"]).merge(folds[["core", "fold"]], on="core")
         for key, g in df.groupby(keys):
             g = g.sort_values("core")
@@ -116,6 +125,8 @@ def summarise(long: pd.DataFrame):
             diff(("img_L0", s), ("zeroshot_TB", s), f"img_L0 {s}px - zero-shot recalibrated {s}px")
             diff(("last_L36", s), ("img_L0", s), f"last_L36 {s}px - img_L0 {s}px")
             diff(("zeroshot_TB", s), ("prior", s), f"zero-shot recalibrated {s}px - label prior")
+            for f in ("img_L0", "last_L36"):  # vision tower fp16 (v3) vs 4-bit (v2)
+                diff((f, s), (f + "_v2", s), f"{f} {s}px: fp16 vision (v3) - 4-bit vision (v2)")
         for s in (896, 1344):
             diff(("img_L0", s), ("img_L0", 448), f"img_L0 {s}px - img_L0 448px")
             diff(("last_L36", s), ("last_L36", 448), f"last_L36 {s}px - last_L36 448px")
@@ -170,7 +181,8 @@ def plot(ci: pd.DataFrame) -> None:
                  "that the zero-shot answer does not use", x=0.01, ha="left", fontsize=12.5,
                  color=INK)
     fig.text(0.01, 0.005, "244 cores, leave-one-slide-out. Bars: 95% bootstrap intervals "
-             "(cores resampled within slide). Colour statistics shown at 448 px only.",
+             "(cores resampled within slide). Colour statistics shown at 448 px only. "
+             "Probes: vision tower in fp16, language model 4-bit (probe_v3).",
              fontsize=8.5, color=INK_2)
     fig.tight_layout(rect=(0, 0.03, 1, 0.86))
     FIG.mkdir(parents=True, exist_ok=True)
